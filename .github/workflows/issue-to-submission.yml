@@ -2,7 +2,7 @@ name: Convert Issue to Submission PR
 
 on:
   issues:
-    types: [opened, edited, labeled]
+    types: [opened, edited]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  create-pr-from-issue:
+  create-or-update-pr:
     if: contains(github.event.issue.labels.*.name, 'project-submission')
     runs-on: ubuntu-latest
     steps:
@@ -27,14 +27,14 @@ jobs:
           BRANCH_NAME="submission/issue-${{ github.event.issue.number }}"
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
 
-      - name: Check if branch exists and create clean branch
+      - name: Check for existing PR
+        id: check_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git fetch origin
-          if git show-ref --quiet refs/remotes/origin/${{ env.branch_name }}; then
-            echo "Branch exists, deleting..."
-            git push origin --delete ${{ env.branch_name }} || true
-          fi
-          git checkout -b ${{ env.branch_name }}
+          PR_NUMBER=$(gh pr list --head "${{ env.branch_name }}" --state open --json number --jq '.[0].number' || echo "")
+          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          echo "Found PR: $PR_NUMBER"
 
       - name: Extract project information
         id: extract
@@ -86,7 +86,7 @@ jobs:
             DUPLICATE=$(jq --arg url "$REPO_URL" '.[] | select(.repository_url==$url) | .repository_url' submissions.json)
             
             if [ ! -z "$DUPLICATE" ]; then
-              echo "Repository URL already exists in submissions.json. Updating entry..."
+              echo "Updating existing submission..."
               jq --argjson new_submission "$SUBMISSION" 'map(if .repository_url == ($new_submission.repository_url) then $new_submission else . end)' submissions.json > submissions_new.json
             else
               echo "Adding new submission..."
@@ -105,7 +105,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add submissions.json
-          git commit -m "Add project submission from issue #${{ github.event.issue.number }}" || exit 0
+          git commit -m "Update project submission from issue #${{ github.event.issue.number }}" || exit 0
           git push --force origin ${{ env.branch_name }}
 
       - name: Prepare PR description
@@ -133,14 +133,21 @@ jobs:
           Closes #${{ github.event.issue.number }}
           EOF
 
-      - name: Create PR with GitHub CLI
-        if: steps.extract.outputs.submission != ''
+      - name: Update Existing PR (if found)
+        if: env.PR_NUMBER != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Authenticate using built-in GITHUB_TOKEN
-          gh auth status || echo "Already authenticated"
-          
+          echo "Updating PR #${{ env.PR_NUMBER }}..."
+          gh pr edit ${{ env.PR_NUMBER }} --body-file pr_body.txt
+          echo "✅ PR #${{ env.PR_NUMBER }} updated successfully."
+
+      - name: Create PR if None Exists
+        if: env.PR_NUMBER == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "No existing PR found, creating a new one..."
           PR_URL=$(gh pr create \
             --repo "${{ github.repository }}" \
             --base main \
@@ -148,11 +155,10 @@ jobs:
             --title "${{ env.PR_TITLE }}" \
             --body-file pr_body.txt \
             --label "project-submission")
-          
           echo "PR_URL=$PR_URL" >> $GITHUB_ENV
 
       - name: Comment on Issue about PR
-        if: env.PR_URL != ''
+        if: env.PR_NUMBER == ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

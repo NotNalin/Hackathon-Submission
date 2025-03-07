@@ -2,8 +2,10 @@ name: Clone Repositories from Submissions
 
 on:
   pull_request:
-    types: [closed]  # Runs when a PR is closed (merged or not)
-  workflow_dispatch:  # Added manual trigger option for testing
+    types: [closed]
+  repository_dispatch:
+  workflow_dispatch:
+  
 
 permissions:
   contents: write
@@ -97,4 +99,4 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add Submissions/
           git commit -m "Add new cloned repositories from submissions.json" || exit 0
-          git push origin main
+          git push origin main   

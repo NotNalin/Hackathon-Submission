@@ -3,6 +3,7 @@ name: PR Deadline Check
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  repository_dispatch:
   workflow_dispatch:
 
 permissions:

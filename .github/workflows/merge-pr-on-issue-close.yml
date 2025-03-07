@@ -31,7 +31,7 @@ jobs:
 
       - name: Merge Associated PR (if found)
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: env.PR_NUMBER != ''
         run: |
           echo "Merging PR #$PR_NUMBER..."
@@ -40,7 +40,7 @@ jobs:
 
       - name: Comment on Issue about PR Merge
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: env.PR_NUMBER != ''
         run: |
           ISSUE_NUMBER="${{ github.event.issue.number }}"

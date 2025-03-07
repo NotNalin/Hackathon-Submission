@@ -16,5 +16,11 @@
     "project_name": "discord bot",
     "repository_url": "https://github.com/NotNalin/Nigesh",
     "description": "discord bot using python."
+  },
+  {
+    "name": "Nalin",
+    "project_name": "shj bot",
+    "repository_url": "https://github.com/Stoobyy/SHJ-Polize",
+    "description": "discord bot using python."
   }
 ]

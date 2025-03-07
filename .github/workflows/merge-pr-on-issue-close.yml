@@ -1,0 +1,51 @@
+name: "Merge Associated PR on Issue Completion (using gh CLI)"
+
+on:
+  issues:
+    types: [closed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  merge-associated-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate with GitHub CLI
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Determine Associated PR Number
+        id: get_pr
+        run: |
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          BRANCH_NAME="submission/issue-${ISSUE_NUMBER}"
+          echo "Looking for PR with head branch: $BRANCH_NAME"
+          # List open PRs with this head branch
+          PR_NUMBER=$(gh pr list --head "$BRANCH_NAME" --state open --json number --jq '.[0].number' || echo "")
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No associated PR found."
+            echo "pr_number=" >> $GITHUB_OUTPUT
+          else
+            echo "Found associated PR number: $PR_NUMBER"
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Merge Associated PR (if found)
+        if: steps.get_pr.outputs.pr_number != ''
+        run: |
+          PR_NUMBER="${{ steps.get_pr.outputs.pr_number }}"
+          echo "Merging PR #$PR_NUMBER..."
+          # Merge the PR using squash method and delete its branch after merging
+          gh pr merge "$PR_NUMBER" --squash --delete-branch --auto
+          echo "PR #$PR_NUMBER has been merged."
+
+      - name: Comment on Issue about PR Merge
+        run: |
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          COMMENT_BODY="✅ The associated PR has been merged because the issue was marked as completed."
+          echo "Commenting on Issue #$ISSUE_NUMBER: $COMMENT_BODY"
+          gh issue comment "$ISSUE_NUMBER" --body "$COMMENT_BODY"

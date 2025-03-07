@@ -22,5 +22,11 @@
     "project_name": "SHJ-Polize",
     "repository_url": "https://github.com/Stoobyy/SHJ-Polize",
     "description": "public discord bot"
+  },
+  {
+    "name": "Nalin",
+    "project_name": "Bot",
+    "repository_url": "https://github.com/NotNalin/introbot",
+    "description": "introbot"
   }
 ]

@@ -1,20 +1,8 @@
 [
   {
-    "name": "Nalin Jyothy",
-    "project_name": "Tweet Analyser",
-    "repository_url": "https://github.com/NotNalin/Tweet-Analyser",
-    "description": "Python project that analyses tweets using NLP"
-  },
-  {
     "name": "Nalin",
     "project_name": "website",
     "repository_url": "https://github.com/NotNalin/portfolio",
     "description": "My website lol"
-  },
-  {
-    "name": "Nalin",
-    "project_name": "discord bot",
-    "repository_url": "https://github.com/NotNalin/Nigesh",
-    "description": "discord bot using python."
   }
 ]

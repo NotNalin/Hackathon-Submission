@@ -28,24 +28,19 @@ jobs:
           BRANCH_NAME="submission/issue-${ISSUE_NUMBER}"
           echo "Looking for PR with head branch: $BRANCH_NAME"
           PR_NUMBER=$(gh pr list --head "$BRANCH_NAME" --state open --json number --jq '.[0].number' || echo "")
-          if [ -z "$PR_NUMBER" ]; then
-            echo "No associated PR found."
-            echo "pr_number=" >> $GITHUB_ENV
-          else
-            echo "Found associated PR number: $PR_NUMBER"
-            echo "pr_number=$PR_NUMBER" >> $GITHUB_ENV
-          fi
+          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          echo "Found PR: $PR_NUMBER"
 
       - name: Merge Associated PR (if found)
-        if: steps.get_pr.outputs.pr_number != ''
+        if: env.PR_NUMBER != ''
         run: |
           PR_NUMBER="${{ steps.get_pr.outputs.pr_number }}"
           echo "Merging PR #$PR_NUMBER..."
-          gh pr merge "$PR_NUMBER" --squash --delete-branch --auto
+          gh pr merge "$PR_NUMBER" --squash --delete-branch --auto --admin
           echo "PR #$PR_NUMBER has been merged."
 
       - name: Comment on Issue about PR Merge
-        if: steps.get_pr.outputs.pr_number != ''
+        if: env.PR_NUMBER != ''
         run: |
           ISSUE_NUMBER="${{ github.event.issue.number }}"
           COMMENT_BODY="✅ The associated PR has been merged because the issue was marked as completed."

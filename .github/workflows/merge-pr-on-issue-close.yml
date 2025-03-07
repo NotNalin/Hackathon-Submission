@@ -22,7 +22,7 @@ jobs:
           ISSUE_NUMBER="${{ github.event.issue.number }}"
           BRANCH_NAME="submission/issue-${ISSUE_NUMBER}"
           PR_NUMBER=$(gh pr list --head "$BRANCH_NAME" --state open --json number --jq '.[0].number' || echo "")
-          
+
           if [[ -n "$PR_NUMBER" ]]; then
             echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
           else
@@ -30,6 +30,8 @@ jobs:
           fi
 
       - name: Merge Associated PR (if found)
+        env:
+          GH_TOKEN: ${{ github.token }}
         if: env.PR_NUMBER != ''
         run: |
           echo "Merging PR #$PR_NUMBER..."
@@ -37,6 +39,8 @@ jobs:
           echo "PR #$PR_NUMBER has been merged."
 
       - name: Comment on Issue about PR Merge
+        env:
+          GH_TOKEN: ${{ github.token }}
         if: env.PR_NUMBER != ''
         run: |
           ISSUE_NUMBER="${{ github.event.issue.number }}"

@@ -10,5 +10,11 @@
     "project_name": "discord bot",
     "repository_url": "https://github.com/NotNalin/Nigesh",
     "description": "discord bot using python"
+  },
+  {
+    "name": "Nalin",
+    "project_name": "Portfolio",
+    "repository_url": "https://github.com/NotNalin/portfolio",
+    "description": "Website portfolio"
   }
 ]

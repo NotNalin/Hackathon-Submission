@@ -1,4 +1,4 @@
-name: PR Deadline Check
+name: PR Deadline & Validation Check
 
 on:
   pull_request:
@@ -10,7 +10,6 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
-  statuses: write
 
 jobs:
   check-deadline:
@@ -21,41 +20,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Debug event information
-        run: |
-          echo "Event name: ${{ github.event_name }}"
-          echo "PR number: ${{ github.event.pull_request.number }}"
-          echo "PR title: ${{ github.event.pull_request.title }}"
-          ls -la
-          if [ -f "submissions.json" ]; then
-            echo "submissions.json exists"
-          else
-            echo "submissions.json does not exist"
-          fi
-
-      - name: Check submission time against deadline
+      - name: Check if PR is Late
         id: deadline-check
         run: |
-          # March 6, 2025, 19:00 Indian time (UTC+5:30) = 13:30 UTC
           DEADLINE="2025-04-06T13:30:00Z"
           CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          echo "Current time: $CURRENT_TIME"
-          echo "Deadline: $DEADLINE"
-
           if [[ "$CURRENT_TIME" > "$DEADLINE" ]]; then
             echo "IS_LATE=true" >> $GITHUB_ENV
-            echo "submission_status=⚠️ **LATE SUBMISSION:** This PR was submitted after the deadline (March 6, 2025, 19:00 Indian time)!" >> $GITHUB_OUTPUT
           else
             echo "IS_LATE=false" >> $GITHUB_ENV
-            echo "submission_status=✅ **ON TIME:** This PR was received before the deadline (March 6, 2025, 19:00 Indian time)." >> $GITHUB_OUTPUT
           fi
 
       - name: Validate submissions.json
         id: validate-submissions
         run: |
           if [ ! -f "submissions.json" ]; then
-            echo "submissions.json not found - PR might not have modified this file"
             echo "VALIDATION_SKIPPED=true" >> $GITHUB_ENV
             exit 0
           fi
@@ -63,73 +43,55 @@ jobs:
           python -c '
           import json
           import sys
-
           try:
               with open("submissions.json", "r") as f:
                   submissions = json.load(f)
-              
-              valid = True
+              required_keys = ["name", "project_name", "repository_url", "description"]
               for submission in submissions:
-                  if not all(key in submission for key in ["name", "project_name", "repository_url", "description"]):
-                      print("Invalid submission found")
-                      valid = False
-                      break
-              
-              if not valid:
-                  sys.exit(1)
-              else:
-                  print("All submissions are valid")
+                  if not all(k in submission for k in required_keys):
+                      print("❌ Invalid submission format")
+                      sys.exit(1)
+              print("✅ Valid submissions.json")
           except Exception as e:
-              print(f"Error reading submissions.json: {e}")
+              print(f"❌ Error reading file: {e}")
               sys.exit(1)
           '
         continue-on-error: true
 
-      - name: Determine overall status
-        id: overall-status
-        run: |
-          if [[ "${VALIDATION_SKIPPED:-false}" == "true" ]]; then
-            echo "comment_body=ℹ️ **Note:** This PR does not modify submissions.json, so validation was skipped." >> $GITHUB_ENV
-            echo "labels=" >> $GITHUB_ENV
-          elif [[ "$IS_LATE" == "true" && "${{ steps.validate-submissions.outcome }}" != "success" ]]; then
-            echo "comment_body=⚠️ **LATE SUBMISSION** and **INVALID submissions.json**: Your submission was late and has missing or incorrect information. Please check and update the PR accordingly." >> $GITHUB_ENV
-            echo "labels=late-submission,insufficient-information" >> $GITHUB_ENV
-          elif [[ "$IS_LATE" == "true" ]]; then
-            echo "comment_body=⚠️ **LATE SUBMISSION**: Your PR was submitted after the deadline. It has been marked as late." >> $GITHUB_ENV
-            echo "labels=late-submission" >> $GITHUB_ENV
-          elif [[ "${{ steps.validate-submissions.outcome }}" != "success" ]]; then
-            echo "comment_body=⚠️ **INVALID submissions.json**: Your submission is missing required fields. Please ensure \`name\`, \`project_name\`, \`repository_url\`, and \`description\` are present." >> $GITHUB_ENV
-            echo "labels=insufficient-information" >> $GITHUB_ENV
-          else
-            echo "comment_body=✅ **All checks passed!** Your submission is on time and correctly formatted. Good job! 🎉" >> $GITHUB_ENV
-            echo "labels=" >> $GITHUB_ENV
-          fi
-
-      - name: Comment on PR using GitHub CLI
-        if: github.event_name == 'pull_request'
+      - name: Mark PR as Late
+        if: env.IS_LATE == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr comment ${{ github.event.pull_request.number }} --body "${{ env.comment_body }}"
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          OLD_TITLE=$(gh pr view $PR_NUMBER --json title --jq .title)
+          if [[ ! "$OLD_TITLE" =~ ^\[LATE\] ]]; then
+            gh pr edit $PR_NUMBER --title "[LATE] $OLD_TITLE"
+          fi
 
-      - name: Add labels if necessary
-        if: env.labels != '' && github.event_name == 'pull_request'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const labelsToAdd = "${{ env.labels }}".split(",").filter(label => label.trim() !== '');
-            if (labelsToAdd.length > 0) {
-              try {
-                await github.rest.issues.addLabels({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  labels: labelsToAdd
-                });
-                console.log("Successfully added labels: " + labelsToAdd.join(", "));
-              } catch (error) {
-                console.log("Could not add labels: " + error.message);
-              }
-            } else {
-              console.log("No labels to add");
-            }
+      - name: Add Labels and Comment on PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          COMMENT=""
+          LABELS=""
+
+          if [[ "$IS_LATE" == "true" && "${{ steps.validate-submissions.outcome }}" != "success" ]]; then
+            COMMENT="⚠️ **LATE & INVALID submission**. Please fix issues."
+            LABELS="late-submission,insufficient-information"
+          elif [[ "$IS_LATE" == "true" ]]; then
+            COMMENT="⚠️ **LATE submission**. This PR was submitted after the deadline."
+            LABELS="late-submission"
+          elif [[ "${{ steps.validate-submissions.outcome }}" != "success" ]]; then
+            COMMENT="⚠️ **INVALID submissions.json**. Please fix formatting issues."
+            LABELS="insufficient-information"
+          else
+            COMMENT="✅ **All checks passed!** Submission is valid and on time."
+          fi
+
+          gh pr comment $PR_NUMBER --body "$COMMENT"
+          
+          if [[ -n "$LABELS" ]]; then
+            gh issue edit $PR_NUMBER --add-label "$LABELS"
+          fi

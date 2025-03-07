@@ -1,5 +1,5 @@
 name: Project Submission
-description: Submit your project for QuickCode 7
+description: Submit your project for the Hackathon
 title: "[Project Submission]: "
 labels: ["project-submission"]
 assignees: []
@@ -8,8 +8,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        # QuickCode 7 Project Submission
-        Thank you for participating in QuickCode 7! Please fill out the information below to submit your project.
+        # Hackathon Project Submission
+        Thank you for participating! Please fill out the information below to submit your project.
 
   - type: input
     id: name
@@ -65,7 +65,7 @@ body:
       label: Code of Conduct
       description: By submitting this project, you agree to follow our code of conduct
       options:
-        - label: I confirm that this project is my original work and adheres to the QuickCode 7 guidelines
+        - label: I confirm that this project is my original work and adheres to the Hackathon guidelines
           required: true
         - label: I understand my submission will be evaluated based on code quality, functionality, and innovation
           required: true
@@ -74,5 +74,5 @@ body:
     attributes:
       value: |
         ## What's Next?
-        After submitting this form, a maintainer will review your submission and create a PR to add your project to our submissions.json file.
+        After submitting this form, a maintainer will review your submission and add it to the repo.
         You will receive feedback and next steps via comments on this issue.

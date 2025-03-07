@@ -1,5 +1,5 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
-  - name: QuickCode 7 Documentation
-    url: https://github.com/elementaryrock/quickcode7#readme
-    about: Check out the documentation for more information about QuickCode 7
+  - name: README
+    url: https://github.com/NotNalin/Hackathon-Submission-Template/
+    about: Learn more here

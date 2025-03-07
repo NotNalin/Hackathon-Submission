@@ -1,11 +1,13 @@
 name: Clone Repositories from Submissions
 
 on:
-  pull_request_target:
+  pull_request:
     types: [closed]  # Runs when a PR is closed (merged or not)
 
 permissions:
-  contents: write  # Allows modifying the repo
+  contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
   clone-repos:

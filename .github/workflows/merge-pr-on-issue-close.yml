@@ -14,6 +14,9 @@ jobs:
   merge-associated-pr:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
       - name: Authenticate with GitHub CLI
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
@@ -24,14 +27,13 @@ jobs:
           ISSUE_NUMBER="${{ github.event.issue.number }}"
           BRANCH_NAME="submission/issue-${ISSUE_NUMBER}"
           echo "Looking for PR with head branch: $BRANCH_NAME"
-          # List open PRs with this head branch
           PR_NUMBER=$(gh pr list --head "$BRANCH_NAME" --state open --json number --jq '.[0].number' || echo "")
           if [ -z "$PR_NUMBER" ]; then
             echo "No associated PR found."
-            echo "pr_number=" >> $GITHUB_OUTPUT
+            echo "pr_number=" >> $GITHUB_ENV
           else
             echo "Found associated PR number: $PR_NUMBER"
-            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_ENV
           fi
 
       - name: Merge Associated PR (if found)
@@ -39,11 +41,11 @@ jobs:
         run: |
           PR_NUMBER="${{ steps.get_pr.outputs.pr_number }}"
           echo "Merging PR #$PR_NUMBER..."
-          # Merge the PR using squash method and delete its branch after merging
           gh pr merge "$PR_NUMBER" --squash --delete-branch --auto
           echo "PR #$PR_NUMBER has been merged."
 
       - name: Comment on Issue about PR Merge
+        if: steps.get_pr.outputs.pr_number != ''
         run: |
           ISSUE_NUMBER="${{ github.event.issue.number }}"
           COMMENT_BODY="✅ The associated PR has been merged because the issue was marked as completed."

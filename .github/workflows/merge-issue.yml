@@ -1,0 +1,153 @@
+name: "Review and Merge Submission PR"
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: "Pull request number to process"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  process-approved-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get PR number
+        id: get-pr
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            PR_NUMBER="${{ github.event.inputs.pull_request_number }}"
+          else
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+          fi
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "Processing PR #$PR_NUMBER"
+
+      - name: Check PR labels and review status
+        id: check-status
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const prNumber = ${{ steps.get-pr.outputs.pr_number }};
+
+            // Get PR details
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            // Get PR labels
+            const { data: prIssue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber
+            });
+
+            const labels = prIssue.labels.map(label => label.name);
+            console.log("PR Labels:", labels);
+
+            // Get reviews
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            // Check if PR has the approved label or approved reviews
+            const hasApprovedLabel = labels.includes('approved');
+            const hasApprovedReview = reviews.some(review => review.state === 'APPROVED');
+
+            // Set output
+            const shouldMerge = hasApprovedLabel || hasApprovedReview;
+            core.setOutput('should_merge', shouldMerge ? 'true' : 'false');
+
+            if (shouldMerge) {
+              console.log("PR is approved and will be merged");
+              
+              // Find the linked issue number from PR body
+              const issueMatch = pr.body.match(/#(\d+)/);
+              if (issueMatch) {
+                const issueNumber = issueMatch[1];
+                core.setOutput('issue_number', issueNumber);
+                console.log(`Found linked issue #${issueNumber}`);
+              }
+            } else {
+              console.log("PR is not approved yet, skipping merge");
+            }
+
+      - name: Merge PR if approved
+        if: steps.check-status.outputs.should_merge == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const prNumber = ${{ steps.get-pr.outputs.pr_number }};
+
+            try {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                merge_method: 'squash',
+                commit_title: `Merge PR #${prNumber}: Add new project submission`,
+                commit_message: `This PR was automatically merged after approval.`
+              });
+              
+              console.log(`Successfully merged PR #${prNumber}`);
+              
+            } catch (error) {
+              core.setFailed(`Failed to merge PR: ${error.message}`);
+            }
+
+      - name: Update linked issue
+        if: steps.check-status.outputs.should_merge == 'true' && steps.check-status.outputs.issue_number != ''
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issueNumber = ${{ steps.check-status.outputs.issue_number }};
+
+            try {
+              // Add a comment to the issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `✅ **Submission Approved**\n\nYour project submission has been approved and merged. Thank you for participating in QuickCode 7!`
+              });
+              
+              // Add the "accepted" label to the issue
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: ['accepted']
+              });
+              
+              // Close the issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                state: 'closed'
+              });
+              
+              console.log(`Successfully updated issue #${issueNumber}`);
+              
+            } catch (error) {
+              console.log(`Error updating issue: ${error.message}`);
+            }

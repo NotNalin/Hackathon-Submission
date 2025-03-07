@@ -18,6 +18,8 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Determine Associated PR Number
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ISSUE_NUMBER="${{ github.event.issue.number }}"
           BRANCH_NAME="submission/issue-${ISSUE_NUMBER}"

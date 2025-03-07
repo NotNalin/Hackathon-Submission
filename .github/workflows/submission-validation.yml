@@ -73,11 +73,12 @@ jobs:
             echo "labels=" >> $GITHUB_ENV
           fi
 
-      - name: Comment on PR
-        uses: peter-evans/create-or-update-comment@v3
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: ${{ env.comment_body }}
+      - name: Comment on PR using GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body "${{ env.comment_body }}"
+        
 
       - name: Add labels if necessary
         if: env.labels != ''

@@ -17,32 +17,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Authenticate with GitHub CLI
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-
       - name: Determine Associated PR Number
-        id: get_pr
         run: |
           ISSUE_NUMBER="${{ github.event.issue.number }}"
           BRANCH_NAME="submission/issue-${ISSUE_NUMBER}"
-          echo "Looking for PR with head branch: $BRANCH_NAME"
           PR_NUMBER=$(gh pr list --head "$BRANCH_NAME" --state open --json number --jq '.[0].number' || echo "")
-          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-          echo "Found PR: $PR_NUMBER"
+          
+          if [[ -n "$PR_NUMBER" ]]; then
+            echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          else
+            echo "No associated PR found for issue #$ISSUE_NUMBER"
+          fi
 
       - name: Merge Associated PR (if found)
         if: env.PR_NUMBER != ''
         run: |
-          PR_NUMBER="${{ steps.get_pr.outputs.pr_number }}"
           echo "Merging PR #$PR_NUMBER..."
-          gh pr merge "$PR_NUMBER" --squash --delete-branch --auto
+          gh pr merge "$PR_NUMBER" --squash --delete-branch || echo "PR merge failed!"
           echo "PR #$PR_NUMBER has been merged."
 
       - name: Comment on Issue about PR Merge
         if: env.PR_NUMBER != ''
         run: |
           ISSUE_NUMBER="${{ github.event.issue.number }}"
-          COMMENT_BODY="✅ The associated PR has been merged because the issue was marked as completed."
-          echo "Commenting on Issue #$ISSUE_NUMBER: $COMMENT_BODY"
-          gh issue comment "$ISSUE_NUMBER" --body "$COMMENT_BODY"
+          if gh pr view "$PR_NUMBER" --json merged --jq '.merged' | grep -q "true"; then
+            COMMENT_BODY="✅ The associated PR #$PR_NUMBER has been merged because the issue was marked as completed."
+            gh issue comment "$ISSUE_NUMBER" --body "$COMMENT_BODY"
+          else
+            echo "❌ PR #$PR_NUMBER was NOT merged. No comment will be added."
+          fi

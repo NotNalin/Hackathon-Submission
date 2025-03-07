@@ -135,6 +135,8 @@ jobs:
 
       - name: Create PR with GitHub CLI
         if: steps.extract.outputs.submission != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Authenticate using built-in GITHUB_TOKEN
           gh auth status || echo "Already authenticated"
@@ -151,5 +153,7 @@ jobs:
 
       - name: Comment on Issue about PR
         if: env.PR_URL != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh issue comment ${{ github.event.issue.number }} --body "✅ Submission processed: $PR_URL"

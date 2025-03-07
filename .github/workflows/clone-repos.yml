@@ -3,6 +3,7 @@ name: Clone Repositories from Submissions
 on:
   pull_request:
     types: [closed]  # Runs when a PR is closed (merged or not)
+  workflow_dispatch:  # Added manual trigger option for testing
 
 permissions:
   contents: write
@@ -18,7 +19,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          ref: main  # 
+          ref: main
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -30,12 +31,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
+      - name: Debug GitHub context
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "PR merged: ${{ github.event.pull_request.merged }}"
+          echo "Repository: ${{ github.repository }}"
+
       - name: Clone repositories from submissions.json
         run: |
           python -c '
           import json
           import os
           import subprocess
+
+          # Check if submissions.json exists
+          if not os.path.exists("submissions.json"):
+              print("submissions.json not found!")
+              exit(1)
 
           with open("submissions.json", "r") as f:
               submissions = json.load(f)

@@ -3,8 +3,6 @@ name: PR Deadline Check
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    paths:
-      - "submissions.json"
   workflow_dispatch:
 
 permissions:
@@ -21,6 +19,18 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - name: Debug event information
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "PR number: ${{ github.event.pull_request.number }}"
+          echo "PR title: ${{ github.event.pull_request.title }}"
+          ls -la
+          if [ -f "submissions.json" ]; then
+            echo "submissions.json exists"
+          else
+            echo "submissions.json does not exist"
+          fi
 
       - name: Check submission time against deadline
         id: deadline-check
@@ -43,6 +53,12 @@ jobs:
       - name: Validate submissions.json
         id: validate-submissions
         run: |
+          if [ ! -f "submissions.json" ]; then
+            echo "submissions.json not found - PR might not have modified this file"
+            echo "VALIDATION_SKIPPED=true" >> $GITHUB_ENV
+            exit 0
+          fi
+
           python -c '
           import json
           import sys
@@ -51,10 +67,17 @@ jobs:
               with open("submissions.json", "r") as f:
                   submissions = json.load(f)
               
+              valid = True
               for submission in submissions:
                   if not all(key in submission for key in ["name", "project_name", "repository_url", "description"]):
                       print("Invalid submission found")
-                      sys.exit(1)
+                      valid = False
+                      break
+              
+              if not valid:
+                  sys.exit(1)
+              else:
+                  print("All submissions are valid")
           except Exception as e:
               print(f"Error reading submissions.json: {e}")
               sys.exit(1)
@@ -64,14 +87,17 @@ jobs:
       - name: Determine overall status
         id: overall-status
         run: |
-          if [[ "$IS_LATE" == "true" && "${{ steps.validate-submissions.outcome }}" != "success" ]]; then
+          if [[ "${VALIDATION_SKIPPED:-false}" == "true" ]]; then
+            echo "comment_body=ℹ️ **Note:** This PR does not modify submissions.json, so validation was skipped." >> $GITHUB_ENV
+            echo "labels=" >> $GITHUB_ENV
+          elif [[ "$IS_LATE" == "true" && "${{ steps.validate-submissions.outcome }}" != "success" ]]; then
             echo "comment_body=⚠️ **LATE SUBMISSION** and **INVALID submissions.json**: Your submission was late and has missing or incorrect information. Please check and update the PR accordingly." >> $GITHUB_ENV
             echo "labels=late-submission,insufficient-information" >> $GITHUB_ENV
           elif [[ "$IS_LATE" == "true" ]]; then
             echo "comment_body=⚠️ **LATE SUBMISSION**: Your PR was submitted after the deadline. It has been marked as late." >> $GITHUB_ENV
             echo "labels=late-submission" >> $GITHUB_ENV
           elif [[ "${{ steps.validate-submissions.outcome }}" != "success" ]]; then
-            echo "comment_body=⚠️ **INVALID submissions.json**: Your submission is missing required fields. Please ensure `name`, `project_name`, `repository_url`, and `description` are present." >> $GITHUB_ENV
+            echo "comment_body=⚠️ **INVALID submissions.json**: Your submission is missing required fields. Please ensure \`name\`, \`project_name\`, \`repository_url\`, and \`description\` are present." >> $GITHUB_ENV
             echo "labels=insufficient-information" >> $GITHUB_ENV
           else
             echo "comment_body=✅ **All checks passed!** Your submission is on time and correctly formatted. Good job! 🎉" >> $GITHUB_ENV
@@ -79,26 +105,30 @@ jobs:
           fi
 
       - name: Comment on PR using GitHub CLI
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr comment ${{ github.event.pull_request.number }} --body "${{ env.comment_body }}"
-        
 
       - name: Add labels if necessary
-        if: env.labels != ''
+        if: env.labels != '' && github.event_name == 'pull_request'
         uses: actions/github-script@v6
         with:
           script: |
-            const labelsToAdd = "${{ env.labels }}".split(",");
-            try {
-              await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                labels: labelsToAdd
-              });
-              console.log("Successfully added labels: " + labelsToAdd.join(", "));
-            } catch (error) {
-              console.log("Could not add labels: " + error.message);
+            const labelsToAdd = "${{ env.labels }}".split(",").filter(label => label.trim() !== '');
+            if (labelsToAdd.length > 0) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: labelsToAdd
+                });
+                console.log("Successfully added labels: " + labelsToAdd.join(", "));
+              } catch (error) {
+                console.log("Could not add labels: " + error.message);
+              }
+            } else {
+              console.log("No labels to add");
             }

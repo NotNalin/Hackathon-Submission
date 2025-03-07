@@ -3,12 +3,15 @@ name: PR Deadline Check
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - "submissions.json"
   workflow_dispatch:
 
 permissions:
   contents: read
   pull-requests: write
   issues: write
+  statuses: write
 
 jobs:
   check-deadline:
@@ -16,6 +19,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Check submission time against deadline
         id: deadline-check

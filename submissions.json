@@ -7,26 +7,14 @@
   },
   {
     "name": "Nalin",
+    "project_name": "website",
+    "repository_url": "https://github.com/NotNalin/portfolio",
+    "description": "My website lol"
+  },
+  {
+    "name": "Nalin",
     "project_name": "discord bot",
     "repository_url": "https://github.com/NotNalin/Nigesh",
-    "description": "discord bot using python"
-  },
-  {
-    "name": "Nalin",
-    "project_name": "Website Portfolio",
-    "repository_url": "https://github.com/NotNalin/portfolio",
-    "description": "My website portfolio."
-  },
-  {
-    "name": "Nalin",
-    "project_name": "SHJ-Polize",
-    "repository_url": "https://github.com/Stoobyy/SHJ-Polize",
-    "description": "public discord bot"
-  },
-  {
-    "name": "Nalin",
-    "project_name": "Bot",
-    "repository_url": "https://github.com/NotNalin/introbot",
-    "description": "introbot"
+    "description": "discord bot using python."
   }
 ]

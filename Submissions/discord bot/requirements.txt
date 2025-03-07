@@ -1,0 +1,4 @@
+requests
+py-cord
+git+https://github.com/NotNalin/rtadubai
+jishaku

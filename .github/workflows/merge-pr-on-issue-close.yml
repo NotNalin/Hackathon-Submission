@@ -46,7 +46,7 @@ jobs:
         if: env.PR_NUMBER != ''
         run: |
           ISSUE_NUMBER="${{ github.event.issue.number }}"
-          if gh pr view "$PR_NUMBER" --json merged --jq '.merged' | grep -q "true"; then
+            if [[ -n "$(gh pr view "$PR_NUMBER" --json mergedAt --jq '.mergedAt')" ]]; then
             COMMENT_BODY="✅ The associated PR #$PR_NUMBER has been merged because the issue was marked as completed."
             gh issue comment "$ISSUE_NUMBER" --body "$COMMENT_BODY"
           else

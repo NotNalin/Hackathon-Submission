@@ -36,7 +36,7 @@ jobs:
         run: |
           PR_NUMBER="${{ steps.get_pr.outputs.pr_number }}"
           echo "Merging PR #$PR_NUMBER..."
-          gh pr merge "$PR_NUMBER" --squash --delete-branch --auto --admin
+          gh pr merge "$PR_NUMBER" --squash --delete-branch --auto
           echo "PR #$PR_NUMBER has been merged."
 
       - name: Comment on Issue about PR Merge

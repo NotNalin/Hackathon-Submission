@@ -1,25 +1,22 @@
 name: Clone Repositories from Submissions
 
 on:
-  pull_request:
-    types: [closed]
-    paths:
-      - "submissions.json"
-  workflow_dispatch: # Allow manual triggering
+  pull_request_target:
+    types: [closed]  # Runs when a PR is closed (merged or not)
 
 permissions:
-  contents: write # Allow writing to the repo
+  contents: write  # Allows modifying the repo
 
 jobs:
   clone-repos:
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true  # Ensures only merged PRs trigger the job
     runs-on: ubuntu-latest
     steps:
       - name: Checkout default branch
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          ref: ${{ github.event.repository.default_branch }}  # Checkout the default branch
+          ref: main  # 
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -38,16 +35,13 @@ jobs:
           import os
           import subprocess
 
-          # Read submissions.json
           with open("submissions.json", "r") as f:
               submissions = json.load(f)
 
-          # Ensure Submissions directory exists
           os.makedirs("Submissions", exist_ok=True)
 
-          new_repos_cloned = False  # Track if any new repo is cloned
+          new_repos_cloned = False
 
-          # Process each submission
           for submission in submissions:
               name = submission.get("name", "unknown")
               project_name = submission.get("project_name", "unknown")
@@ -56,16 +50,14 @@ jobs:
               if not repo_url:
                   print(f"No repository URL found for {name}, skipping...")
                   continue
-              
-              clone_path = os.path.join("Submissions", project_name)  # Keep original folder name
 
-              # Skip cloning if folder already exists
+              clone_path = os.path.join("Submissions", project_name)
+
               if os.path.exists(clone_path):
                   print(f"Repository {project_name} already exists, skipping...")
                   continue
 
               print(f"Cloning {repo_url} into {clone_path}...")
-              
               try:
                   subprocess.run(["git", "clone", repo_url, clone_path], check=True)
                   new_repos_cloned = True  # Mark that we cloned at least one repo
@@ -79,9 +71,7 @@ jobs:
               except subprocess.CalledProcessError as e:
                   print(f"Failed to clone {repo_url}: {e}")
 
-          # Set environment variable to track if there are changes
           if new_repos_cloned:
-              print("NEW_CLONES=true")
               with open(os.environ["GITHUB_ENV"], "a") as env_file:
                   env_file.write("NEW_CLONES=true\n")
           '
@@ -93,4 +83,4 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add Submissions/
           git commit -m "Add new cloned repositories from submissions.json" || exit 0
-          git push origin ${{ github.event.repository.default_branch }}
+          git push origin main

@@ -16,5 +16,11 @@
     "project_name": "Website Portfolio",
     "repository_url": "https://github.com/NotNalin/portfolio",
     "description": "My website portfolio."
+  },
+  {
+    "name": "Nalin",
+    "project_name": "SHJ-Polize",
+    "repository_url": "https://github.com/Stoobyy/SHJ-Polize",
+    "description": "public discord bot"
   }
 ]

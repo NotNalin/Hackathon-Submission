@@ -10,7 +10,7 @@ on:
         required: false
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
   issues: write
 
@@ -84,17 +84,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ env.PR_NUMBER }}
-          PR_INFO=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/NotNalin/Hackathon-Submission/pulls/$PR_NUMBER")
-
-          OLD_TITLE=$(echo "$PR_INFO" | jq -r '.title')
+          OLD_TITLE=$(gh api -X GET repos/${{ github.repository }}/pulls/$PR_NUMBER --jq '.title')
           if [[ ! "$OLD_TITLE" =~ ^\[LATE\] ]]; then
-            NEW_TITLE="[LATE] $OLD_TITLE"
-            curl -s -X PATCH \
-              -H "Authorization: token $GH_TOKEN" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/NotNalin/Hackathon-Submission/pulls/$PR_NUMBER" \
-              -d "{\"title\":\"$NEW_TITLE\"}"
+            gh pr edit $PR_NUMBER --title "[LATE] $OLD_TITLE"
           fi
 
       - name: Add Labels and Comment on PR

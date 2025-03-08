@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
   pull-requests: write
   issues: write
 
@@ -16,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Determine Associated PR Number
         env:
@@ -117,8 +120,12 @@ jobs:
               exit 1
             fi
           fi
-          echo "Triggering clone-repos workflow..."
-          gh workflow run clone-repos.yml
+          echo "Triggering clone-repos workflow using gh api..."
+          if gh api \
+            -X POST \
+            /repos/$GITHUB_REPOSITORY/dispatches \
+            -f event_type="clone-repos"; then
+            echo "✅ Successfully triggered clone-repos workflow."
 
       - name: Close PR if issue was not completed
         env:

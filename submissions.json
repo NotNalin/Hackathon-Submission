@@ -4,5 +4,11 @@
     "project_name": "",
     "repository_url": "",
     "description": ""
+  },
+  {
+    "name": "Nalin",
+    "project_name": "Portfolio",
+    "repository_url": "https://github.com/NotNalin/portfolio",
+    "description": "This is my portfolio website\nhere is the link https://notnal.in"
   }
 ]

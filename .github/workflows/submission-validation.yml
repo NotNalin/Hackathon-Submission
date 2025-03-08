@@ -84,7 +84,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ env.PR_NUMBER }}
-          OLD_TITLE=$(gh pr view $PR_NUMBER --json title --jq .title)
+          OLD_TITLE=$(gh api -X GET repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/pulls/$PR_NUMBER --jq .title)
           if [[ ! "$OLD_TITLE" =~ ^\[LATE\] ]]; then
             gh pr edit $PR_NUMBER --title "[LATE] $OLD_TITLE"
           fi

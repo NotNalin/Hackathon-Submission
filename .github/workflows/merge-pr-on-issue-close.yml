@@ -40,7 +40,7 @@ jobs:
           STATE_REASON=$(gh issue view "$ISSUE_NUMBER" --json stateReason --jq '.stateReason')
           echo "Issue #$ISSUE_NUMBER was closed with reason: $STATE_REASON"
 
-          if [[ "$STATE_REASON" == "completed" ]]; then
+          if [[ "$STATE_REASON" == "COMPLETED" ]]; then
             echo "ISSUE_COMPLETED=true" >> $GITHUB_ENV
           else
             echo "ISSUE_COMPLETED=false" >> $GITHUB_ENV

@@ -31,24 +31,53 @@ jobs:
             echo "No associated PR found for issue #$ISSUE_NUMBER"
           fi
 
-      - name: Merge Associated PR (if found)
+      - name: Check if issue was closed as completed
+        if: env.PR_NUMBER != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: env.PR_NUMBER != ''
         run: |
-          echo "Merging PR #$PR_NUMBER..."
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          STATE_REASON=$(gh issue view "$ISSUE_NUMBER" --json stateReason --jq '.stateReason')
+          echo "Issue #$ISSUE_NUMBER was closed with reason: $STATE_REASON"
+
+          if [[ "$STATE_REASON" == "completed" ]]; then
+            echo "ISSUE_COMPLETED=true" >> $GITHUB_ENV
+          else
+            echo "ISSUE_COMPLETED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Merge PR if issue was completed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: env.PR_NUMBER != '' && env.ISSUE_COMPLETED == 'true'
+        run: |
+          echo "Issue was completed. Merging PR #$PR_NUMBER..."
           gh pr merge "$PR_NUMBER" --squash --delete-branch || echo "PR merge failed!"
           echo "PR #$PR_NUMBER has been merged."
 
-      - name: Comment on Issue about PR Merge
+      - name: Close PR if issue was not completed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: env.PR_NUMBER != '' && env.ISSUE_COMPLETED == 'false'
+        run: |
+          echo "Issue was not completed. Closing PR #$PR_NUMBER without merging..."
+          gh pr close "$PR_NUMBER" --delete-branch || echo "PR closing failed!"
+          echo "PR #$PR_NUMBER has been closed."
+
+      - name: Comment on Issue about PR action
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: env.PR_NUMBER != ''
         run: |
           ISSUE_NUMBER="${{ github.event.issue.number }}"
+
+          if [[ "$ISSUE_COMPLETED" == "true" ]]; then
             if [[ -n "$(gh pr view "$PR_NUMBER" --json mergedAt --jq '.mergedAt')" ]]; then
-            COMMENT_BODY="✅ The associated PR #$PR_NUMBER has been merged because the issue was marked as completed."
-            gh issue comment "$ISSUE_NUMBER" --body "$COMMENT_BODY"
+              COMMENT_BODY="✅ The associated PR #$PR_NUMBER has been merged because the issue was marked as completed."
+            else
+              COMMENT_BODY="⚠️ The associated PR #$PR_NUMBER could not be merged even though the issue was marked as completed."
+            fi
           else
-            echo "❌ PR #$PR_NUMBER was NOT merged. No comment will be added."
+            COMMENT_BODY="🔒 The associated PR #$PR_NUMBER has been closed without merging because the issue was not completed."
           fi
+          gh issue comment "$ISSUE_NUMBER" --body "$COMMENT_BODY"

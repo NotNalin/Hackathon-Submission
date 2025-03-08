@@ -26,16 +26,21 @@ jobs:
 
       - name: Get PR Number
         run: |
-          if [[ -n "${{ github.event.pull_request.number }}" ]]; then
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-          elif [[ -n "${{ github.event.client_payload.pr_number }}" ]]; then
-            echo "PR_NUMBER=${{ github.event.client_payload.pr_number }}" >> $GITHUB_ENV
-          elif [[ -n "${{ github.event.inputs.pr_number }}" ]]; then
-            echo "PR_NUMBER=${{ github.event.inputs.pr_number }}" >> $GITHUB_ENV
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          CLIENT_PR_NUMBER="${{ github.event.client_payload.pr_number }}"
+          INPUT_PR_NUMBER="${{ github.event.inputs.pr_number }}"
+      
+          if [[ -n "$PR_NUMBER" ]]; then
+            echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          elif [[ -n "$CLIENT_PR_NUMBER" ]]; then
+            echo "PR_NUMBER=$CLIENT_PR_NUMBER" >> $GITHUB_ENV
+          elif [[ -n "$INPUT_PR_NUMBER" ]]; then
+            echo "PR_NUMBER=$INPUT_PR_NUMBER" >> $GITHUB_ENV
           else
             echo "❌ PR Number not found!"
             exit 1
           fi
+      
 
 
       - name: Check if PR is Late

@@ -1,5 +1,4 @@
 name: Convert Issue to Submission PR
-
 on:
   issues:
     types: [opened, edited]
@@ -180,17 +179,11 @@ jobs:
           PR_NUMBER=$(gh pr view "${{ env.branch_name }}" --json number --jq '.number')
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
 
-      - name: Comment on Issue about PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Commenting on Issue #${{ github.event.issue.number }}..."
-          gh issue comment ${{ github.event.issue.number }} --body "✅ Submission processed: ${{ env.PR_URL }}"
-
       - name: Trigger PR Validation Workflow
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh workflow run submission-validation.yml \
-            --ref main \
-            -f pr_number="${{ env.PR_NUMBER }}"
+          --ref main \
+          -f pr_number="${{ env.PR_NUMBER }}" \
+          -f issue_number="${{ github.event.issue.number }}"

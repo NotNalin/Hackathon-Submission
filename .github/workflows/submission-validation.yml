@@ -8,6 +8,9 @@ on:
       pr_number:
         description: "PR Number"
         required: false
+      issue_number:
+        description: "Issue Number"
+        required: false
 
 permissions:
   contents: write
@@ -94,29 +97,68 @@ jobs:
               -d "{\"title\":\"[LATE] $TITLE\"}"
           fi
 
-      - name: Add Labels and Comment on PR
+      - name: Add Labels and Comment on PR & Issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ env.PR_NUMBER }}
+          ISSUE_NUMBER=${{ env.ISSUE_NUMBER }}
           COMMENT=""
           LABELS=""
-
+      
+          # Determine validation status
           if [[ "$IS_LATE" == "true" && "${{ steps.validate-submissions.outcome }}" != "success" ]]; then
             COMMENT="⚠️ **LATE & INVALID submission**. Please fix issues."
             LABELS="late-submission,insufficient-information"
+            VALIDATION_STATUS="LATE & INVALID"
           elif [[ "$IS_LATE" == "true" ]]; then
             COMMENT="⚠️ **LATE submission**. This PR was submitted after the deadline."
             LABELS="late-submission"
+            VALIDATION_STATUS="LATE"
           elif [[ "${{ steps.validate-submissions.outcome }}" != "success" ]]; then
             COMMENT="⚠️ **INVALID submissions.json**. Please fix formatting issues."
             LABELS="insufficient-information"
+            VALIDATION_STATUS="INVALID"
           else
             COMMENT="✅ **All checks passed!** Submission is valid and on time."
+            VALIDATION_STATUS="VALID"
           fi
-
+      
+          # Add comment to PR
           gh pr comment $PR_NUMBER --body "$COMMENT"
-
+      
+          # Add labels to PR
           if [[ -n "$LABELS" ]]; then
             gh issue edit $PR_NUMBER --add-label "$LABELS"
           fi
+      
+          # Check if PR is linked to an issue and comment
+          if [[ -n "$ISSUE_NUMBER" ]]; then
+            echo "Found associated issue #$ISSUE_NUMBER"
+      
+            # Prepare issue comment
+            case "$VALIDATION_STATUS" in
+              "VALID")
+                ISSUE_COMMENT="✅ **Validation passed**: Your project submission (PR #$PR_NUMBER) is valid and on time!"
+                ;;
+              "LATE")
+                ISSUE_COMMENT="⚠️ **Late submission**: Your project submission (PR #$PR_NUMBER) was received after the deadline."
+                ;;
+              "INVALID")
+                ISSUE_COMMENT="⚠️ **Invalid submission**: Your project submission (PR #$PR_NUMBER) has formatting issues in submissions.json. Please fix them."
+                ;;
+              "LATE & INVALID")
+                ISSUE_COMMENT="⚠️ **Late & Invalid submission**: Your project submission (PR #$PR_NUMBER) was received after the deadline and has formatting issues. Please fix them."
+                ;;
+              *)
+                ISSUE_COMMENT="ℹ️ **Submission status**: Your project submission (PR #$PR_NUMBER) has been processed."
+                ;;
+            esac
+      
+            # Add comment to issue
+            gh issue comment $ISSUE_NUMBER --body "$ISSUE_COMMENT"
+            echo "Commented on issue #$ISSUE_NUMBER about validation status"
+          else
+            echo "No associated issue found for PR #$PR_NUMBER"
+          fi
+    

@@ -102,10 +102,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ env.PR_NUMBER }}
-          ISSUE_NUMBER=${{ env.ISSUE_NUMBER }}
+          ISSUE_NUMBER=${{ github.event.client_payload.issue_number || github.event.inputs.issue_number }}
           COMMENT=""
           LABELS=""
-      
+
           # Determine validation status
           if [[ "$IS_LATE" == "true" && "${{ steps.validate-submissions.outcome }}" != "success" ]]; then
             COMMENT="⚠️ **LATE & INVALID submission**. Please fix issues."
@@ -123,19 +123,19 @@ jobs:
             COMMENT="✅ **All checks passed!** Submission is valid and on time."
             VALIDATION_STATUS="VALID"
           fi
-      
+
           # Add comment to PR
           gh pr comment $PR_NUMBER --body "$COMMENT"
-      
+
           # Add labels to PR
           if [[ -n "$LABELS" ]]; then
             gh issue edit $PR_NUMBER --add-label "$LABELS"
           fi
-      
+
           # Check if PR is linked to an issue and comment
           if [[ -n "$ISSUE_NUMBER" ]]; then
             echo "Found associated issue #$ISSUE_NUMBER"
-      
+
             # Prepare issue comment
             case "$VALIDATION_STATUS" in
               "VALID")
@@ -154,11 +154,10 @@ jobs:
                 ISSUE_COMMENT="ℹ️ **Submission status**: Your project submission (PR #$PR_NUMBER) has been processed."
                 ;;
             esac
-      
+
             # Add comment to issue
             gh issue comment $ISSUE_NUMBER --body "$ISSUE_COMMENT"
             echo "Commented on issue #$ISSUE_NUMBER about validation status"
           else
             echo "No associated issue found for PR #$PR_NUMBER"
           fi
-    

@@ -1,14 +1,14 @@
 [
   {
-    "name": "ds",
-    "project_name": "ds",
-    "repository_url": "https://github.com/elementaryrock/Portfolio-v2",
-    "description": "ds"
-  },
-  {
     "name": "Nalin",
     "project_name": "Portfolio",
     "repository_url": "https://github.com/NotNalin/portfolio",
     "description": "My portfolio website"
+  },
+  {
+    "name": "Maanas M S",
+    "project_name": "Portfolio",
+    "repository_url": "https://github.com/elementaryrock/Portfolio-v2",
+    "description": "Portfolio"
   }
 ]

@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   clone-repos:
-    if: github.event.pull_request.merged == true  # Ensures only merged PRs trigger the job
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout default branch

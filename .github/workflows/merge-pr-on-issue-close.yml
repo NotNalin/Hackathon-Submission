@@ -51,9 +51,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: env.PR_NUMBER != '' && env.ISSUE_COMPLETED == 'true'
         run: |
-          echo "Issue was completed. Merging PR #$PR_NUMBER..."
-          gh pr merge "$PR_NUMBER" --squash --delete-branch || echo "PR merge failed!"
-          echo "PR #$PR_NUMBER has been merged."
+          echo "Merging PR #$PR_NUMBER..."
+          if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
+            echo "PR #$PR_NUMBER merged successfully. Triggering clone-repos workflow..."
+            gh workflow run clone-repos.yml --ref main
+          else
+            echo "❌ PR merge failed!"
+          fi
+        
 
       - name: Close PR if issue was not completed
         env:
@@ -63,6 +68,7 @@ jobs:
           echo "Issue was not completed. Closing PR #$PR_NUMBER without merging..."
           gh pr close "$PR_NUMBER" --delete-branch || echo "PR closing failed!"
           echo "PR #$PR_NUMBER has been closed."
+
 
       - name: Comment on Issue about PR action
         env:

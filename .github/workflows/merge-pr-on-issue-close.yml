@@ -113,11 +113,28 @@ jobs:
             # Push the fixed branch
             if git push --force-with-lease origin "$PR_BRANCH"; then
               echo "✅ PR #$PR_NUMBER updated with conflict resolution."
-            else
+
+              # Retry merging after fixing conflicts
+              if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
+                echo "✅ PR #$PR_NUMBER merged successfully after conflict resolution."
+              else
+                echo "❌ Failed to merge PR #$PR_NUMBER after resolving conflicts."
+                exit 1
+              fi
+
+              # Confirm PR was merged
+              MERGED_STATUS=$(gh pr view "$PR_NUMBER" --json mergedAt --jq '.mergedAt')
+              if [[ -n "$MERGED_STATUS" ]]; then
+                echo "✅ PR #$PR_NUMBER was successfully merged at $MERGED_STATUS."
+              else
+                echo "❌ PR #$PR_NUMBER was NOT merged despite no conflicts."
+                exit 1
+              fi
               echo "❌ Failed to push resolved PR branch. Manual intervention required."
               exit 1
             fi
-          fi
+            else
+
           if gh api repos/${{ github.repository }}/dispatches \
               --method POST \
               --header "Authorization: Bearer $GH_TOKEN" \

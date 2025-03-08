@@ -80,13 +80,18 @@ jobs:
 
       - name: Mark PR as Late
         if: env.IS_LATE == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ env.PR_NUMBER }}
-          OLD_TITLE=$(gh api -X GET repos/${{ github.repository }}/pulls/$PR_NUMBER --jq '.title')
-          if [[ ! "$OLD_TITLE" =~ ^\[LATE\] ]]; then
-            gh pr edit $PR_NUMBER --title "[LATE] $OLD_TITLE"
+          REPO="${GITHUB_REPOSITORY}"
+          TITLE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${REPO}/pulls/$PR_NUMBER" | jq -r '.title')
+
+          if [[ ! "$TITLE" =~ ^\[LATE\] ]]; then
+            curl -s -X PATCH \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${REPO}/pulls/$PR_NUMBER" \
+              -d "{\"title\":\"[LATE] $TITLE\"}"
           fi
 
       - name: Add Labels and Comment on PR

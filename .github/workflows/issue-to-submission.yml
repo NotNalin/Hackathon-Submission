@@ -173,17 +173,20 @@ jobs:
             --title "${{ env.PR_TITLE }}" \
             --body-file pr_body.txt \
             --label "project-submission")
+
           echo "PR_URL=$PR_URL" >> $GITHUB_ENV
-          PR_NUMBER=$(gh pr view $PR_URL --json number --jq '.number')
+
+          # Fetch PR number using the branch name (not PR URL)
+          PR_NUMBER=$(gh pr view "${{ env.branch_name }}" --json number --jq '.number')
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
 
       - name: Comment on Issue about PR
-        if: env.PR_NUMBER == ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "✅ Submission processed: $PR_URL"
-          
+          echo "Commenting on Issue #${{ github.event.issue.number }}..."
+          gh issue comment ${{ github.event.issue.number }} --body "✅ Submission processed: ${{ env.PR_URL }}"
+
       - name: Trigger PR Validation Workflow
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -191,6 +194,3 @@ jobs:
           gh workflow run submission-validation.yml \
             --ref main \
             -f pr_number="${{ env.PR_NUMBER }}"
-
-
-

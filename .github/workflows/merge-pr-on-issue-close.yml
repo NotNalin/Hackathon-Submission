@@ -51,13 +51,74 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: env.PR_NUMBER != '' && env.ISSUE_COMPLETED == 'true'
         run: |
-          echo "Merging PR #$PR_NUMBER..."
-          if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
-            echo "PR #$PR_NUMBER merged successfully. Triggering clone-repos workflow..."
-            gh workflow run clone-repos.yml
+          echo "Attempting to merge PR #$PR_NUMBER..."
+
+          # Check if the PR is mergeable
+          MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable')
+
+          if [[ "$MERGEABLE" == "MERGEABLE" ]]; then
+            echo "✅ PR #$PR_NUMBER is mergeable. Proceeding with squash merge..."
+            if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
+              echo "✅ PR #$PR_NUMBER merged successfully."
+            else
+              echo "❌ Failed to merge PR #$PR_NUMBER."
+              exit 1
+            fi
           else
-            echo "❌ PR merge failed!"
+            echo "⚠️ PR #$PR_NUMBER has merge conflicts. Attempting auto-resolve..."
+
+            # Set up Git
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+            git config --local user.name "github-actions[bot]"
+
+            # Fetch the latest main branch
+            git fetch origin main
+
+            # Fetch the PR branch
+            PR_BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName --jq '.headRefName')
+            git fetch origin "$PR_BRANCH"
+
+            # Checkout the PR branch
+            git checkout "$PR_BRANCH"
+
+            # Rebase onto main to resolve conflicts
+            git rebase origin/main
+
+            # Check for conflicts in submissions.json
+            if [[ -f "submissions.json" ]]; then
+              echo "Resolving conflicts in submissions.json..."
+
+              # Read `submissions.json` from both branches
+              git checkout origin/main -- submissions.json
+              mv submissions.json main_submissions.json
+
+              git checkout "$PR_BRANCH" -- submissions.json
+              mv submissions.json pr_submissions.json
+
+              # Merge JSON contents using jq (ensuring unique entries based on repository_url)
+              jq -s 'add | unique_by(.repository_url)' main_submissions.json pr_submissions.json > submissions.json
+
+              # Commit the resolved file
+              git add submissions.json
+              git rebase --continue
+
+              # Push the resolved PR branch
+              git push --force-with-lease origin "$PR_BRANCH"
+
+              # Attempt final merge
+              if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
+                echo "✅ PR #$PR_NUMBER merged successfully after resolving conflicts."
+              else
+                echo "❌ Failed to merge PR #$PR_NUMBER after resolving conflicts."
+                exit 1
+              fi
+            else
+              echo "❌ submissions.json not found. Cannot resolve conflicts."
+              exit 1
+            fi
           fi
+          echo "Triggering clone-repos workflow..."
+          gh workflow run clone-repos.yml
 
       - name: Close PR if issue was not completed
         env:

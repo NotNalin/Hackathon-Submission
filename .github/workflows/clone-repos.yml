@@ -4,7 +4,9 @@ on:
   pull_request:
     types: [closed]
   repository_dispatch:
+    types: [clone-repos]
   workflow_dispatch:
+    
   
 
 permissions:

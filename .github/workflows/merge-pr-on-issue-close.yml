@@ -70,53 +70,48 @@ jobs:
           else
             echo "⚠️ PR #$PR_NUMBER has merge conflicts. Attempting auto-resolve..."
 
-            # Set up Git
+            # Set up Git user
             git config --local user.email "github-actions[bot]@users.noreply.github.com"
             git config --local user.name "github-actions[bot]"
 
-            # Fetch the latest main branch
+            # Fetch latest main branch
             git fetch origin main
 
-            # Fetch the PR branch
+            # Get the PR branch name
             PR_BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName --jq '.headRefName')
-            git fetch origin "$PR_BRANCH"
 
-            # Checkout the PR branch
+            # Fetch and checkout PR branch
+            git fetch origin "$PR_BRANCH"
             git checkout "$PR_BRANCH"
 
-            # Rebase onto main to resolve conflicts
-            git rebase origin/main
+            # Attempt to rebase onto main
+            if ! git rebase origin/main; then
+              echo "❌ Rebase failed due to conflicts. Resolving manually..."
 
-            # Check for conflicts in submissions.json
-            if [[ -f "submissions.json" ]]; then
-              echo "Resolving conflicts in submissions.json..."
+              # Extract `submissions.json` from both branches
+              git show origin/main:submissions.json > main_submissions.json || touch main_submissions.json
+              git show "$PR_BRANCH":submissions.json > pr_submissions.json || touch pr_submissions.json
 
-              # Read `submissions.json` from both branches
-              git checkout origin/main -- submissions.json
-              mv submissions.json main_submissions.json
-
-              git checkout "$PR_BRANCH" -- submissions.json
-              mv submissions.json pr_submissions.json
-
-              # Merge JSON contents using jq (ensuring unique entries based on repository_url)
+              # Merge JSON contents (ensuring unique submissions by repository_url)
               jq -s 'add | unique_by(.repository_url)' main_submissions.json pr_submissions.json > submissions.json
 
-              # Commit the resolved file
+              # Stage the resolved file
               git add submissions.json
-              git rebase --continue
 
-              # Push the resolved PR branch
-              git push --force-with-lease origin "$PR_BRANCH"
-
-              # Attempt final merge
-              if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
-                echo "✅ PR #$PR_NUMBER merged successfully after resolving conflicts."
+              # Continue the rebase process
+              if git rebase --continue; then
+                echo "✅ Merge conflicts resolved, rebase successful."
               else
-                echo "❌ Failed to merge PR #$PR_NUMBER after resolving conflicts."
-                exit 1
+                echo "⚠️ Rebase still failing. Skipping this commit..."
+                git rebase --skip
               fi
+            fi
+
+            # Push the fixed branch
+            if git push --force-with-lease origin "$PR_BRANCH"; then
+              echo "✅ PR #$PR_NUMBER updated with conflict resolution."
             else
-              echo "❌ submissions.json not found. Cannot resolve conflicts."
+              echo "❌ Failed to push resolved PR branch. Manual intervention required."
               exit 1
             fi
           fi

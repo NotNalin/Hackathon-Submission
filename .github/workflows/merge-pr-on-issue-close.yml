@@ -1,4 +1,4 @@
-name: "Merge Associated PR on Issue Completion (using gh CLI)"
+name: "Merge Associated PR on Issue Completion"
 
 on:
   issues:

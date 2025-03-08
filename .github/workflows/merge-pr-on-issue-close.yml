@@ -54,11 +54,10 @@ jobs:
           echo "Merging PR #$PR_NUMBER..."
           if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
             echo "PR #$PR_NUMBER merged successfully. Triggering clone-repos workflow..."
-            gh workflow run clone-repos.yml --ref main
+            gh workflow run clone-repos.yml
           else
             echo "❌ PR merge failed!"
           fi
-        
 
       - name: Close PR if issue was not completed
         env:
@@ -68,7 +67,6 @@ jobs:
           echo "Issue was not completed. Closing PR #$PR_NUMBER without merging..."
           gh pr close "$PR_NUMBER" --delete-branch || echo "PR closing failed!"
           echo "PR #$PR_NUMBER has been closed."
-
 
       - name: Comment on Issue about PR action
         env:

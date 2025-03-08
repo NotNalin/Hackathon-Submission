@@ -93,17 +93,20 @@ jobs:
               git show "$PR_BRANCH":submissions.json > pr_submissions.json || touch pr_submissions.json
 
               # Merge JSON contents (ensuring unique submissions by repository_url)
-              jq -s 'add | unique_by(.repository_url)' main_submissions.json pr_submissions.json > submissions.json
+              jq -s 'add | group_by(.repository_url) | map(if .[0].repository_url == "" then .[0] else .[] end)' main_submissions.json pr_submissions.json > submissions.json
 
               # Stage the resolved file
               git add submissions.json
-
-              # Continue the rebase process
               if git rebase --continue; then
-                echo "✅ Merge conflicts resolved, rebase successful."
+                  echo "✅ Merge conflicts resolved, rebase successful."
+              elif git status --porcelain | grep submissions.json; then
+                  git add submissions.json
+                  git commit -m "Resolved merge conflicts in submissions.json"
+                  git rebase --continue
               else
-                echo "⚠️ Rebase still failing. Skipping this commit..."
-                git rebase --skip
+                  echo "⚠️ Rebase still failing. Aborting..."
+                  git rebase --abort
+                  exit 1
               fi
             fi
 

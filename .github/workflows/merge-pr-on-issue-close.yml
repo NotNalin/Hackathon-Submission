@@ -117,7 +117,7 @@ jobs:
               echo "✅ PR #$PR_NUMBER updated with conflict resolution."
 
               # Retry merging after fixing conflicts
-              if gh pr merge "$PR_NUMBER" --squash --delete-branch; then
+              if gh pr merge "$PR_NUMBER" --squash --delete-branch --auto; then
                 echo "✅ PR #$PR_NUMBER merged successfully after conflict resolution."
               else
                 echo "❌ Failed to merge PR #$PR_NUMBER after resolving conflicts."

@@ -13,6 +13,12 @@
   },
   {
     "name": "Nalin",
+    "project_name": "Tweet Analyser",
+    "repository_url": "https://github.com/NotNalin/Tweet-Analyser",
+    "description": "Analyses tweets using NLP"
+  },
+  {
+    "name": "Nalin",
     "project_name": "SHJ-Polize",
     "repository_url": "https://github.com/Stoobyy/SHJ-Polize",
     "description": "public discord bot"

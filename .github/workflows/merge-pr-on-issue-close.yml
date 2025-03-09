@@ -133,7 +133,6 @@ jobs:
               echo "❌ Failed to push resolved PR branch. Manual intervention required."
               exit 1
             fi
-            else
 
           if gh api repos/${{ github.repository }}/dispatches \
               --method POST \

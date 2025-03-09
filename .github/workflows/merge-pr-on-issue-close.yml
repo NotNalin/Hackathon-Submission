@@ -130,19 +130,22 @@ jobs:
                 echo "❌ PR #$PR_NUMBER was NOT merged despite no conflicts."
                 exit 1
               fi
+            else
               echo "❌ Failed to push resolved PR branch. Manual intervention required."
               exit 1
-            fi
+            fi  # ✅ Closing `if` block properly before calling `gh api`
 
-          if gh api repos/${{ github.repository }}/dispatches \
-              --method POST \
-              --header "Authorization: Bearer $GH_TOKEN" \
-              --header "Accept: application/vnd.github.everest-preview+json" \
-              --field event_type="clone-repos"; then
-            echo "✅ Successfully triggered clone-repos workflow."
-          else
-            echo "❌ Failed to trigger clone-repos workflow."
-            exit 1
+            # Now trigger the workflow
+            if gh api repos/${{ github.repository }}/dispatches \
+                --method POST \
+                --header "Authorization: Bearer $GH_TOKEN" \
+                --header "Accept: application/vnd.github.everest-preview+json" \
+                --field event_type="clone-repos"; then
+              echo "✅ Successfully triggered clone-repos workflow."
+            else
+              echo "❌ Failed to trigger clone-repos workflow."
+              exit 1
+            fi
           fi
 
       - name: Close PR if issue was not completed

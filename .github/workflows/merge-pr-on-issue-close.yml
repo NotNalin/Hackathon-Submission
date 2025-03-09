@@ -78,7 +78,9 @@ jobs:
             git fetch origin main
 
             # Get the PR branch name
-            PR_BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName --jq '.headRefName')
+            PR_DETAILS=$(gh pr view "$PR_NUMBER" --json headRefName,title --jq '{branch: .headRefName, title: .title}')
+            PR_BRANCH=$(echo "$PR_DETAILS" | jq -r '.branch')
+            PR_TITLE=$(echo "$PR_DETAILS" | jq -r '.title')
 
             # Fetch and checkout PR branch
             git fetch origin "$PR_BRANCH"
@@ -101,7 +103,7 @@ jobs:
                   echo "✅ Merge conflicts resolved, rebase successful."
               elif git status --porcelain | grep submissions.json; then
                   git add submissions.json
-                  git commit -m "Resolved merge conflicts in submissions.json"
+                  git commit -m "$PR_TITLE"
                   git rebase --continue
               else
                   echo "⚠️ Rebase still failing. Aborting..."

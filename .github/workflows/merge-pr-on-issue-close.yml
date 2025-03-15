@@ -49,10 +49,29 @@ jobs:
             echo "ISSUE_COMPLETED=false" >> $GITHUB_ENV
           fi
 
-      - name: Merge PR if issue was completed
+      - name: Check if user has write access
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: env.PR_NUMBER != '' && env.ISSUE_COMPLETED == 'true'
+        run: |
+          # Get the username of the person who closed the issue
+          ACTOR="${{ github.actor }}"
+          
+          # Check if the user has write permission to the repository
+          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/$ACTOR/permission --jq '.permission')
+          
+          # Write, admin, and maintain all have write access
+          if [[ "$PERMISSION" == "admin" || "$PERMISSION" == "write" || "$PERMISSION" == "maintain" ]]; then
+            echo "User $ACTOR has write permission: $PERMISSION"
+            echo "HAS_WRITE_ACCESS=true" >> $GITHUB_ENV
+          else
+            echo "User $ACTOR does not have write permission: $PERMISSION"
+            echo "HAS_WRITE_ACCESS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Merge PR if issue was completed by user with write access
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: env.PR_NUMBER != '' && env.ISSUE_COMPLETED == 'true' && env.HAS_WRITE_ACCESS == 'true'
         run: |
           echo "Attempting to merge PR #$PR_NUMBER..."
 
@@ -135,7 +154,7 @@ jobs:
             else
               echo "❌ Failed to push resolved PR branch. Manual intervention required."
               exit 1
-            fi  # ✅ Closing `if` block properly before calling `gh api`
+            fi
           fi
           # Now trigger the workflow
           if gh api repos/${{ github.repository }}/dispatches \
@@ -149,10 +168,22 @@ jobs:
             exit 1
           fi
 
+      - name: Close PR if issue was closed by user without write access
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: env.PR_NUMBER != '' && env.HAS_WRITE_ACCESS == 'false'
+        run: |
+          echo "Issue #${{ github.event.issue.number }} was closed by a user without write access. Closing PR #$PR_NUMBER without merging..."
+          gh pr close "$PR_NUMBER" || echo "PR closing failed!"
+          echo "PR #$PR_NUMBER has been closed."
+          
+          # Comment on the PR
+          gh pr comment "$PR_NUMBER" --body "This PR is being closed because issue #${{ github.event.issue.number }} was closed by @${{ github.actor }}"
+
       - name: Close PR if issue was not completed
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: env.PR_NUMBER != '' && env.ISSUE_COMPLETED == 'false'
+        if: env.PR_NUMBER != '' && env.ISSUE_COMPLETED == 'false' && env.HAS_WRITE_ACCESS == 'true'
         run: |
           echo "Issue was not completed. Closing PR #$PR_NUMBER without merging..."
           gh pr close "$PR_NUMBER" --delete-branch || echo "PR closing failed!"
@@ -165,7 +196,9 @@ jobs:
         run: |
           ISSUE_NUMBER="${{ github.event.issue.number }}"
 
-          if [[ "$ISSUE_COMPLETED" == "true" ]]; then
+          if [[ "$HAS_WRITE_ACCESS" == "false" ]]; then
+            COMMENT_BODY="🔒 The associated PR #$PR_NUMBER has been closed without merging because the issue was closed by @${{ github.actor }} who does not have write access to this repository."
+          elif [[ "$ISSUE_COMPLETED" == "true" ]]; then
             if [[ -n "$(gh pr view "$PR_NUMBER" --json mergedAt --jq '.mergedAt')" ]]; then
               COMMENT_BODY="✅ The associated PR #$PR_NUMBER has been merged because the issue was marked as completed."
             else

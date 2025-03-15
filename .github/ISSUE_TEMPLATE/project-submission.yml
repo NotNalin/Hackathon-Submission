@@ -15,7 +15,7 @@ body:
   - type: input
     id: name
     attributes:
-      label: 👤 Name
+      label: Name
       description: Team Name or Team Leader's Name
       placeholder: "e.g., John Doe"
     validations:
@@ -24,7 +24,7 @@ body:
   - type: input
     id: project_name
     attributes:
-      label: 📌 Project Name
+      label: Project Name
       description: The name of your project
       placeholder: "e.g., Weather App"
     validations:
@@ -33,7 +33,7 @@ body:
   - type: input
     id: repository_url
     attributes:
-      label: 🔗 GitHub Repository URL
+      label: GitHub Repository URL
       description: Provide a public link to your GitHub repository
       placeholder: "https://github.com/username/repository"
     validations:
@@ -42,7 +42,7 @@ body:
   - type: textarea
     id: description
     attributes:
-      label: 📝 Project Description
+      label: Project Description
       description: Briefly describe your project (50-100 words).
       placeholder: "What does your project do? What technologies were used? Why did you create it? What are the key features?"
     validations:
@@ -51,7 +51,7 @@ body:
   - type: textarea
     id: team_members
     attributes:
-      label: 👥 Team Members
+      label: Team Members
       description: If this is a team project, list all members and their roles.
       placeholder: |
         1. John Doe - Frontend Developer
@@ -63,7 +63,7 @@ body:
   - type: checkboxes
     id: terms
     attributes:
-      label: ✅ Code of Conduct & Submission Agreement
+      label: Code of Conduct & Submission Agreement
       description: By submitting this project, you agree to follow our rules.
       options:
         - label: I confirm that this project is my original work and follows the Hackathon guidelines.

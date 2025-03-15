@@ -24,7 +24,7 @@ This repository provides an **automated workflow** to manage **hackathon project
 ### 2️⃣ Validating & Reviewing
 
 - PRs are checked for **missing fields** in `submissions.json`
-- PRs **submitted late** are marked with `[LATE]` in the title
+- PRs **submitted late** are marked with `[LATE]` in the title and given the label `late-submission`
 - Reviewers can approve and merge valid submissions
 
 ### 3️⃣ Automatic PR Merging
@@ -54,7 +54,7 @@ This repository provides an **automated workflow** to manage **hackathon project
 ### 📝 Submitting a Project
 
 1. Create a **GitHub Issue** using the submission template.
-2. Add the label **`project-submission`**.
+2. Add the label **`project-submission`** (It will be automatically added).
 3. The system will automatically generate a **PR**.
 
 ### 🔍 Reviewing & Approving
@@ -66,7 +66,7 @@ This repository provides an **automated workflow** to manage **hackathon project
 ---
 
 ## 🔧 Configuration
-
+- **Add Labels:** Add labels `project-submission` and `late-submission`
 - **Deadline Date:** Update the `DEADLINE` in `.github/workflows/submission-validation.yml`
 - **Required Fields in `submissions.json`**:
     ```json

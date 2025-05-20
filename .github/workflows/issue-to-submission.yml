@@ -66,10 +66,30 @@ jobs:
               return;
             }
 
+            // Check for required headings to ensure template format
+            const requiredHeadings = [
+              '### Name',
+              '### Project Name',
+              '### GitHub Repository URL',
+              '### Project Description'
+            ];
+            for (const heading of requiredHeadings) {
+              if (!body.includes(heading)) {
+                core.setFailed('Issue template format has changed or is incomplete.');
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `❌ **Error:** The issue template format is incorrect or missing required headings. Please use the official submission template.`
+                });
+                return;
+              }
+            }
+
             const nameMatch = body.match(/### Name\s*\n\s*([^\n]+)/);
             const projectMatch = body.match(/### Project Name\s*\n\s*([^\n]+)/);
             const repoMatch = body.match(/### GitHub Repository URL\s*\n\s*([^\n]+)/);
-            const descMatch = body.match(/### Project Description\s*\n\s*([\s\S]*?)(?=###|$)/);
+            const descMatch = body.match(/### Project Description\s*\n*([\s\S]*?)(?=###|$)/);
 
             if (!nameMatch || !projectMatch || !repoMatch || !descMatch) {
               core.setFailed('Could not extract all required information from issue');

@@ -48,7 +48,8 @@ jobs:
       - name: Check if PR is Late
         id: deadline-check
         run: |
-          DEADLINE="2025-02-02T13:30:00Z"
+          # Read deadline from config.yml
+          DEADLINE=$(python3 -c 'import yaml; print(yaml.safe_load(open("config.yml"))["deadline"])' 2>/dev/null || python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["deadline"])' < config.yml)
           CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
           if [[ "$CURRENT_TIME" > "$DEADLINE" ]]; then
@@ -68,13 +69,21 @@ jobs:
           python -c '
           import json
           import sys
+          import re
           try:
               with open("submissions.json", "r") as f:
                   submissions = json.load(f)
               required_keys = ["name", "project_name", "repository_url", "description"]
+              url_pattern = r"^https?://github\\.com/[\\w-]+/[\\w-]+(?:\\.git)?$"
               for submission in submissions:
-                  if not all(k in submission for k in required_keys):
-                      print("❌ Invalid submission format")
+                  # Check all required keys are present and non-empty
+                  for k in required_keys:
+                      if k not in submission or not str(submission[k]).strip():
+                          print(f"❌ Invalid submission: missing or empty field '{k}'")
+                          sys.exit(1)
+                  # Check repository_url format
+                  if not re.match(url_pattern, submission["repository_url"]):
+                      print(f"❌ Invalid repository_url format: {submission['repository_url']}")
                       sys.exit(1)
               print("✅ Valid submissions.json")
           except Exception as e:

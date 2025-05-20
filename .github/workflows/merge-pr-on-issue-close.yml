@@ -113,21 +113,23 @@ jobs:
               git show origin/main:submissions.json > main_submissions.json || touch main_submissions.json
               git show "$PR_BRANCH":submissions.json > pr_submissions.json || touch pr_submissions.json
 
-              # Merge JSON contents (ensuring unique submissions by repository_url)
-              jq -s 'add | group_by(.repository_url) | map(if .[0].repository_url == "" then .[0] else .[] end)' main_submissions.json pr_submissions.json > submissions.json
+              # Merge JSON contents (ensuring unique submissions by repository_url and removing empty/invalid entries)
+              jq -s 'add | map(select(.repository_url and .name and .project_name and .description and (.repository_url|test("^https?://github\\.com/[\\w-]+/[\\w-]+(?:\\.git)?$"))) | unique_by(.repository_url)' main_submissions.json pr_submissions.json > submissions.json
 
               # Stage the resolved file
               git add submissions.json
               if git rebase --continue; then
-                  echo "✅ Merge conflicts resolved, rebase successful."
+                echo "✅ Merge conflicts resolved, rebase successful."
               elif git status --porcelain | grep submissions.json; then
-                  git add submissions.json
-                  git commit -m "$PR_TITLE"
-                  git rebase --continue
+                git add submissions.json
+                git commit -m "$PR_TITLE"
+                git rebase --continue
               else
-                  echo "⚠️ Rebase still failing. Aborting..."
-                  git rebase --abort
-                  exit 1
+                echo "⚠️ Rebase still failing. Aborting..."
+                git rebase --abort
+                # Notify maintainers of failure
+                gh issue comment "$ISSUE_NUMBER" --body "❌ Merge conflict in submissions.json could not be resolved automatically. Manual intervention required."
+                exit 1
               fi
             fi
 
